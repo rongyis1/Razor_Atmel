@@ -136,6 +136,73 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  static u32 u32Counter = 0;
+  static u32 u32Status = 0;
+  static u32 u32Index = 0;
+  static u32 u32Time = COUNTER_LIMIT_MS;
+  static bool bLightIson = TRUE;
+  static bool bDarker = TRUE;    //define variables and initialize
+  
+  u32Counter++; //increase 1 per 1ms
+  
+  /*the solution when u32Time=0*/
+  if(u32Time == 0)
+  {
+    HEARTBEAT_OFF();               //close the heartbeat
+  }
+  
+  /*judge the timing of heartbeat*/
+  if(u32Counter == u32Time)      
+  {
+    /*determine on or off*/
+    if(bLightIson)
+    {
+      HEARTBEAT_OFF();              //close the heartbeat
+      bLightIson = FALSE;
+    }
+    
+  }
+  
+  /*judge per 10ms=100Hz*/
+  if(u32Counter == COUNTER_LIMIT_MS)
+  {
+    u32Counter = 0;
+    
+    if(!bLightIson)
+    {
+      HEARTBEAT_ON();                //open the heartbeat
+      bLightIson = TRUE;
+    }
+ 
+    /*judge per 100ms and change its status*/
+    u32Status++;
+    if(u32Status == 10)
+    {
+      u32Status = 0;
+      
+      /*judge the DUTY CIRCLE for increasing or decreasing*/
+      if(bDarker)
+      {
+        u32Time = COUNTER_LIMIT_MS*(100-10*(++u32Index))/100;//increase the DUTY CIRCLE
+        
+        if(u32Index == 10)
+        {
+          bDarker = FALSE; //change the status
+        }
+      }
+      
+      else
+      {
+        u32Time = COUNTER_LIMIT_MS*(100-10*(--u32Index))/100;//decrease the DUTY CIRCLE
+        
+        if(u32Index == 0)
+        {
+          bDarker = TRUE;//change the status
+        }
+      }
+      
+    }
+  }
 
 } /* end UserApp1SM_Idle() */
     
