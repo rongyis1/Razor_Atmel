@@ -136,6 +136,74 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+    static u32 u32Counter1s = 0;
+  static u32 u32Counter = 0;
+  static u32 u32Status = 0;
+  static u32 u32Time = COUNTER_LIMIT_MS;
+  static bool bLightIson = FALSE;
+  static bool bSlower = FALSE;       //define variables and initialize   
+  
+  u32Counter1s++;
+  u32Counter++;                     //increase 1 per 1ms
+  
+  /*judge the timing of heartbeat*/
+  if(u32Counter == u32Time)
+  {
+    u32Counter = 0;
+    
+    /*determine on or off*/
+    if(bLightIson)
+    {
+      HEARTBEAT_OFF();
+      bLightIson = FALSE;
+    }
+    else
+    {
+      HEARTBEAT_ON();
+      bLightIson = TRUE;
+    }
+  }
+  
+  /*judge per 1s*/
+  if(u32Counter1s == COUNTER_LIMIT_MS)
+  {
+    u32Counter1s = 0;
+    u32Status++;
+    
+    /*judge per 2s and change its status*/  
+    if(u32Status == 2)
+    {
+      u32Status = 0;
+      
+      /*judge the blinking rate for increasing or decreasing*/
+      if(bSlower)
+      {
+        u32Time = u32Time<<1;              //double the blinking rate
+        
+        if(u32Time >= COUNTER_LIMIT_MS)    //determine if the rate is max
+        {
+          bSlower = FALSE;                 //change the status
+          u32Time = COUNTER_LIMIT_MS;
+        }
+        
+      }
+      
+      else
+      {
+        u32Time = u32Time>>1;              //reduce the blinking in the same way
+        
+        if(u32Time <= 10)                 //determine if the rate is min
+        {
+          bSlower = TRUE;                 //change the status
+          u32Time = 10;
+        } 
+      }
+    
+    }
+   
+    u32Counter = 0;                        //the solution of the problem in my task
+    
+  }
 
 } /* end UserApp1SM_Idle() */
     
