@@ -87,6 +87,14 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
+  LedOff(WHITE);
+  LedOff(PURPLE);
+  LedOff(BLUE);
+  LedOff(CYAN);
+  LedOff(GREEN);
+  LedOff(YELLOW);
+  LedOff(ORANGE);
+  LedOff(RED);
  
   /* If good initialization, set state to Idle */
   if( 1 )
@@ -136,6 +144,93 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  /*declare and initialize the variables*/
+  static LedNumberType aeCurrentLed[]  = {WHITE,PURPLE,BLUE,CYAN,GREEN,YELLOW,ORANGE,RED};
+  static LedRateType aeCurrentRate[] = {LED_PWM_100,LED_PWM_70,LED_PWM_50,LED_PWM_30,LED_PWM_20,LED_PWM_15,LED_PWM_10,LED_PWM_5};
+  static u8 u8CurrentLedIndex  = 0;
+  static u16 u16Counter = 0;
+  static u8 u8ColorIndex = 0;
+  static u16 u16SpeedCounter = SPEED_COUNTER;
+  
+  u16Counter++;               //increase 1 per 1ms
+  
+  /*determine the time of each LED*/
+  if(u16Counter == u16SpeedCounter)
+  {
+    u16Counter = 0;
+    u16SpeedCounter -= 50;//improve the rate of turning on the LED
+    
+    /*the solution when opening the first LED */
+    LedOff(RED);
+    
+    /*turn off the previous LED and turn on the current LED*/
+    LedOff(aeCurrentLed[u8CurrentLedIndex-1]);
+    LedPWM(aeCurrentLed[u8CurrentLedIndex],aeCurrentRate[u8CurrentLedIndex]);
+        
+    u8CurrentLedIndex++;//move to the next LED
+    
+    /*the operation when finish one cycle*/
+    if(u8CurrentLedIndex == 8)
+    {
+      /*return to the first LED*/
+      u8CurrentLedIndex = 0;
+      u16SpeedCounter = SPEED_COUNTER;
+      
+      /* Manage the back light color */
+      u8ColorIndex++;
+      if(u8ColorIndex == 8)
+      {
+        u8ColorIndex = 1;
+      }
+
+      /* Set the backlight color: white (all), 
+      purple (blue + red), blue, cyan (blue + green), 
+      green, yellow (green + red), red */
+      switch(u8ColorIndex)
+      {
+        case 1: /* red */
+          LedOn(LCD_RED);
+          LedOff(LCD_GREEN);
+          LedOff(LCD_BLUE);
+          break;        
+        case 2: /* white */
+          LedOn(LCD_RED);
+          LedOn(LCD_GREEN);
+          LedOn(LCD_BLUE);
+          break;
+        case 3: /* yellow */
+          LedOn(LCD_RED);
+          LedOn(LCD_GREEN);
+          LedOff(LCD_BLUE);
+          break;
+        case 4: /* green */
+          LedOff(LCD_RED);
+          LedOn(LCD_GREEN);
+          LedOff(LCD_BLUE);
+          break; 
+        case 5: /* cyan */
+          LedOff(LCD_RED);
+          LedOn(LCD_GREEN);
+          LedOn(LCD_BLUE);
+          break; 
+        case 6: /* blue */
+          LedOff(LCD_RED);
+          LedOff(LCD_GREEN);
+          LedOn(LCD_BLUE);
+          break;                    
+        case 7: /* purple */
+          LedOn(LCD_RED);
+          LedOff(LCD_GREEN);
+          LedOn(LCD_BLUE);
+          break;          
+        default: /* off */
+          LedOff(LCD_RED);
+          LedOff(LCD_GREEN);
+          LedOff(LCD_BLUE);
+          break;
+      } /* end switch */
+    }
+  }
 
 } /* end UserApp1SM_Idle() */
     
