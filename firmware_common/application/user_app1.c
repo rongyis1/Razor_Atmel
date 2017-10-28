@@ -87,6 +87,14 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
+  LedOff(WHITE);
+  LedOff(PURPLE);
+  LedOff(BLUE);
+  LedOff(CYAN);
+  LedOff(GREEN);
+  LedOff(YELLOW);
+  LedOff(ORANGE);
+  LedOff(RED);
  
   /* If good initialization, set state to Idle */
   if( 1 )
@@ -136,6 +144,122 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  /*declare and define variables*/
+  static u8 u8Index = 0;
+  static bool bResetIsOn = TRUE;
+  static u16 auPasswordNew[]     = {0,0,0,0,0,0,0,0,0,0};
+  static u16 auPasswordElement[] = {0,0,0,0,0,0,0,0,0,0};
+  
+  /*judge whether the BUTTON3 held*/
+  if ( IsButtonHeld(BUTTON3,1000) )
+  {
+    ButtonAcknowledge(BUTTON3);//clear the BUTTON3 log
+    u8Index = 0;           
+    LedBlink(RED,LED_4HZ);     //blink the RED LED
+    LedBlink(GREEN,LED_4HZ);   //blink the GREEN LED
+    bResetIsOn = TRUE;         //begin to reset the password
+  }
+  
+  /*judge whether beginning to reset*/
+  if (bResetIsOn)
+  {
+    /*BUTTON0 = Password  '0'*/
+    if ( WasButtonPressed(BUTTON0) )
+    {
+      ButtonAcknowledge(BUTTON0);
+      auPasswordNew[u8Index] = PASSWORD1;
+      u8Index++;    
+    }
+    
+    /*BUTTON0 = Password  '1'*/
+    if ( WasButtonPressed(BUTTON1) )
+    {
+      ButtonAcknowledge(BUTTON1);
+      auPasswordNew[u8Index] = PASSWORD2;
+      u8Index++;
+    }
+    
+    /*BUTTON0 = Password  '2'*/
+    if ( WasButtonPressed(BUTTON2) )
+    {
+      ButtonAcknowledge(BUTTON2);
+      auPasswordNew[u8Index] = PASSWORD3;
+      u8Index++;   
+    }
+    
+    /*judge whether to enter ten digits*/
+    if (u8Index > 9)
+    {
+      /*Press BUTTON3 to save and affirm the password*/
+      if ( WasButtonPressed(BUTTON3) )
+      {
+        ButtonAcknowledge(BUTTON3);
+        u8Index = 0;          //return to first element
+        bResetIsOn = FALSE;   //finish resetting the password
+        LedOff(GREEN);        //turn off the Green Led
+        LedOn(RED);           //turn on the Red Led
+      }
+    }
+    else  
+    {
+      ButtonAcknowledge(BUTTON3);
+    }
+  }
+  
+  /*begin to determine if the password is correct*/
+  else
+  {
+    /*BUTTON0 = Password  '0'*/
+    if ( WasButtonPressed(BUTTON0) )
+    {
+      ButtonAcknowledge(BUTTON0);
+      auPasswordElement[u8Index] = PASSWORD1;
+      u8Index++;    
+    }
+    
+    /*BUTTON0 = Password  '1'*/
+    if ( WasButtonPressed(BUTTON1) )
+    {
+      ButtonAcknowledge(BUTTON1);
+      auPasswordElement[u8Index] = PASSWORD2;
+      u8Index++;
+    }
+    
+    /*BUTTON0 = Password  '2'*/
+    if ( WasButtonPressed(BUTTON2) )
+    {
+      ButtonAcknowledge(BUTTON2);
+      auPasswordElement[u8Index] = PASSWORD3;
+      u8Index++;   
+    }
+    
+    /*press BUTTON3 to determine if the password is correct*/
+    if ( WasButtonPressed(BUTTON3) )
+    {
+      ButtonAcknowledge(BUTTON3);
+      
+      /*determine if the two array is equal*/  
+      for (u8Index = 0;u8Index<10;u8Index++)
+      {
+        if (auPasswordElement[u8Index] != auPasswordNew[u8Index])
+        {
+          break;
+        }
+      }
+      if (u8Index < 10)
+      {
+        LedOff(GREEN);
+        LedBlink(RED,LED_4HZ);
+        u8Index = 0;
+      }
+      else
+      {
+        LedOff(RED);
+        LedBlink(GREEN,LED_4HZ);
+        u8Index = 0;
+      }
+    }
+  }
 
 } /* end UserApp1SM_Idle() */
     
