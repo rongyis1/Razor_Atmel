@@ -87,7 +87,16 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
- 
+  LedOff(WHITE);
+  LedOff(PURPLE);
+  LedOff(BLUE);
+  LedOff(CYAN);
+  LedOff(GREEN);
+  LedOff(YELLOW);
+  LedOff(ORANGE);
+  LedOff(RED);
+  LedBlink(BLUE,LED_1HZ);
+  LedBlink(CYAN,LED_1HZ);
   /* If good initialization, set state to Idle */
   if( 1 )
   {
@@ -136,6 +145,42 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  static s8 s8IndexUp = 0;
+  static LedRateType aeCurrentRate[] = {LED_PWM_100,LED_PWM_90,LED_PWM_75,LED_PWM_55,LED_PWM_30,LED_PWM_20,LED_PWM_15,LED_PWM_10,LED_PWM_5};
+  static bool bTurnDarker = TRUE;
+  static u16 u16Counter = 0;
+  
+  u16Counter++;
+  if (u16Counter == RATETIME)
+  {
+    u16Counter = 0;
+    /*judge  if the LED turning darker*/    
+    if (bTurnDarker)
+    {
+      LedPWM(ORANGE,aeCurrentRate[s8IndexUp]);
+      LedPWM(RED,aeCurrentRate[s8IndexUp]);
+      s8IndexUp++;
+      
+      if (s8IndexUp == 9)
+      {
+        bTurnDarker = FALSE;
+      }
+    }
+    else
+    {
+      LedPWM(ORANGE,aeCurrentRate[s8IndexUp]);
+      LedPWM(RED,aeCurrentRate[s8IndexUp]);
+      s8IndexUp--;
+      
+      if (s8IndexUp <0 )
+      {
+        bTurnDarker = TRUE;
+      }
+    }
+  }
+  
+  LedOn(PURPLE);
+  LedOn(WHITE);
 
 } /* end UserApp1SM_Idle() */
     
