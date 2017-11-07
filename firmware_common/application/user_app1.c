@@ -51,7 +51,8 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
-
+extern u8 G_au8DebugScanfBuffer[];  /* From debug.c */
+extern u8 G_u8DebugScanfCharCount;  /* From debug.c */
 
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
@@ -136,7 +137,65 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
-
+  /*declare and initialize variables*/
+  static u8 u8NameBuffer[]          = "Rongyi";
+  static u8 u8NameCharsMessage[]    = "\n\rMy Name Is: ";
+  static u8 u8LineCharsMessage[]    = "\n\rPlease Input Message:";
+  static u8 u8ResultCharsMessage[]  = "\n\rOccurrence Rongyi Number:";
+  static u8 UserApp_au8UserInputBuffer[U16_USER_INPUT_BUFFER_SIZE  ];
+  static u8 u8AppearIndex     = 0;
+  static u8 u8Line            = 0;
+  static u8 u8Row             = 0;
+  static u8 u8RowCount        = 3; 
+  static bool bInitial = TRUE;
+  u8 u8CharCount;
+  
+  /*enter initial interface*/
+  if (bInitial)
+  { 
+    DebugPrintf(u8NameCharsMessage);
+    DebugPrintf(u8NameBuffer);
+    DebugPrintf(u8LineCharsMessage);
+    bInitial = FALSE;
+  }
+  
+  /*check if my name has been inputted*/
+  if ( strstr((char*)G_au8DebugScanfBuffer,(char*)u8NameBuffer) )
+  {
+    u8CharCount = DebugScanf(UserApp_au8UserInputBuffer);
+    if (u8CharCount > 0)
+    {
+      u8AppearIndex++;
+      DebugPrintf(u8ResultCharsMessage);
+      DebugLineFeed();
+      
+      /*modify the size of * when apprear over 10 times*/
+      if (u8AppearIndex == 10)
+      {
+        u8RowCount = 4;
+      }
+      
+      /*show the appear times when apprear my name */
+      for (u8Line=0; u8Line<3; u8Line++)
+      {
+        /*the interface of the second line*/
+        if (u8Line == 1)
+        {
+          DebugPrintf("*");
+          DebugPrintNumber(u8AppearIndex);
+          DebugPrintf("*");
+        }
+        else
+        {
+          for (u8Row=0; u8Row<u8RowCount; u8Row++)
+          {
+            DebugPrintf("*");
+          }
+        }
+        DebugLineFeed();
+      }
+    }    
+  }
 } /* end UserApp1SM_Idle() */
     
 
