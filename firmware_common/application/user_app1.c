@@ -51,7 +51,8 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
-
+extern u8 G_au8DebugScanfBuffer[];  /* From debug.c */
+extern u8 G_u8DebugScanfCharCount;  /* From debug.c */
 
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
@@ -59,7 +60,7 @@ Variable names shall start with "UserApp1_" and be declared as static.
 ***********************************************************************************************************************/
 static fnCode_type UserApp1_StateMachine;            /* The state machine function pointer */
 //static u32 UserApp1_u32Timeout;                      /* Timeout counter used across states */
-
+static u8 UserApp_au8UserInputBuffer[U16_USER_INPUT_BUFFER_SIZE];
 
 /**********************************************************************************************************************
 Function Definitions
@@ -87,6 +88,11 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
+  
+  for(u16 i = 0; i < U16_USER_INPUT_BUFFER_SIZE  ; i++)
+  {
+    UserApp_au8UserInputBuffer[i] = 0;
+  }
  
   /* If good initialization, set state to Idle */
   if( 1 )
@@ -136,6 +142,124 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  /*Declare and intialize variables*/
+  static u8 u8NoteIndex     = 0;
+  static u8 u8CharCount     = 0;
+  static u8 u8BuzzerTime    = 0;
+  static u8 u8CurrentStatus = 0;
+  static bool bIsInputing = FALSE;
+  static bool bInitial = TRUE;
+  static bool bBuzzerIsOn = FALSE;
+  static u8* pu8Address;
+  static u8* u8MusicNote[]      = {"1234567",
+                                   "QWERTYU",
+                                   "ASDFGHJ",
+                                   "ZXCVBNM"};
+  static u8* u8ButtonMessage[]  = {"C3 Scale--Input Number 1-7: ",
+                                   "C4 Scale--Input Number Q-U: ",
+                                   "C5 Scale--Input Number A-J: ",
+                                   "C6 Scale--Input Number Z-M: "};
+  static u8* u8DefaultMessage[] = {"\n\rWrong Input!  Please Input Number 1-7: ",
+                                   "\n\rWrong Input!  Please Input Number Q-U: ",
+                                   "\n\rWrong Input!  Please Input Number A-J: ",
+                                   "\n\rWrong Input!  Please Input Number Z-M: "};
+  static u8 u8InitialMessage[]  = "\n\rPress BUTTON 0-3 TO Choose Musical Scale";
+  u32 au32Tone[8][4]={{C3,C4,C5,C6},
+                      {D3,D4,D5,D6},
+                      {E3,E4,E5,E6},
+                      {F3,F4,F5,F6},
+                      {G3,G4,G5,G6},
+                      {A3,A4,A5,A6},
+                      {B3,B4,B5,B6}};
+  
+  /*enter the initia interface*/
+  if (bInitial) 
+  {
+    DebugPrintf(u8InitialMessage);
+    bInitial = FALSE;
+  }
+  
+  /*Press BUTTON 0-3 TO Choose Musical Scale*/
+  if ( WasButtonPressed(BUTTON0) )
+  {
+    ButtonAcknowledge(BUTTON0);
+    u8CurrentStatus = 1;                                  //Status :C3
+    DebugLineFeed();
+    DebugPrintf(u8ButtonMessage[u8CurrentStatus-1]);
+    bIsInputing = TRUE;                                  //begin to input character
+  }
+  if ( WasButtonPressed(BUTTON1) )
+  {
+    ButtonAcknowledge(BUTTON1);
+    u8CurrentStatus = 2;                                 //Status :C4
+    DebugLineFeed();
+    DebugPrintf(u8ButtonMessage[u8CurrentStatus-1]);
+    bIsInputing = TRUE; 
+  }
+  if ( WasButtonPressed(BUTTON2) )
+  {
+    ButtonAcknowledge(BUTTON2);
+    u8CurrentStatus = 3;                                 //Status :C5
+    DebugLineFeed();
+    DebugPrintf(u8ButtonMessage[u8CurrentStatus-1]);
+    bIsInputing = TRUE; 
+  }
+  if (  WasButtonPressed(BUTTON3) )
+  {
+    ButtonAcknowledge(BUTTON3);
+    u8CurrentStatus = 4;                                 //Status :C6
+    DebugLineFeed();
+    DebugPrintf(u8ButtonMessage[u8CurrentStatus-1]);
+    bIsInputing = TRUE; 
+  }
+  
+  /*input the correct characters to turn on the Buzzer*/
+  if (bIsInputing)
+  {
+    u8CharCount = DebugScanf(UserApp_au8UserInputBuffer);
+    if (u8CharCount == 1)
+    {
+      UserApp_au8UserInputBuffer[u8CharCount] = '\0';
+      pu8Address = (u8*)strstr((char*)u8MusicNote[u8CurrentStatus-1],(char*)UserApp_au8UserInputBuffer); 
+      
+      /*check if the character correct*/
+      if (pu8Address)
+      {
+        bBuzzerIsOn = TRUE;        //turn on the BUZZER1
+      }
+      else
+      {
+        PWMAudioOff(BUZZER1);
+        DebugPrintf(u8DefaultMessage[u8CurrentStatus-1]);
+      }
+    }    
+  }
+  else
+  {
+    u8CharCount = DebugScanf(UserApp_au8UserInputBuffer);
+    if(u8CharCount > 0)
+    {
+      DebugPrintf(u8InitialMessage);
+    }
+  }
+  
+  /*turn on the buzzer and turn off it when reaching 100ms*/
+  if (bBuzzerIsOn)
+  {
+    u8BuzzerTime++;
+    u8NoteIndex = pu8Address - u8MusicNote[u8CurrentStatus-1];        //Choose current musical note
+    PWMAudioSetFrequency(BUZZER1,au32Tone[u8NoteIndex][u8CurrentStatus-1]);   //set the BUZZER1 frequency
+    PWMAudioOn(BUZZER1);
+    
+    /*turn off the BUZZER1 when reaching 100ms*/
+    if (u8BuzzerTime == BUZZER_ON_TIME)
+    {
+      u8BuzzerTime = 0;
+      PWMAudioOff(BUZZER1);
+      bBuzzerIsOn = FALSE;
+    }
+  }
+
 
 } /* end UserApp1SM_Idle() */
     
