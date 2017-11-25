@@ -28,7 +28,18 @@ Type Definitions
 /**********************************************************************************************************************
 Constants / Definitions
 **********************************************************************************************************************/
-
+#define SET_PASSWORD_STATUS      (u8)0
+#define MAIN_INTERFACE_STATUS    (u8)1
+#define ADD_COMMAND_STATUS       (u8)2
+#define CHECK_COMMAND_END_STATUS (u8)3
+#define CURRENT_PROGRAM_STATUS   (u8)4
+#define NEW_PROGRAM_STATUS       (u8)5
+#define CLEAR_LIST_STATUS        (u8)6
+#define CHECK_LED_SIZE           (u8)3
+#define CHECK_START_TIME_SIZE    (u8)10
+#define CHECK_STOP_TIME_SIZE     (u8)10
+#define INPUT_COMMAND_SIZE       (u8)100
+#define DEBUG_DELAY_TIME         (u8)5
 
 /**********************************************************************************************************************
 Function Declarations
