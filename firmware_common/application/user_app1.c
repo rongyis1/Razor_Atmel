@@ -52,7 +52,6 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
 
-
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
 Variable names shall start with "UserApp1_" and be declared as static.
@@ -136,6 +135,100 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  //LCDMessage of  different states
+  static u8 au8LCDMessage1[] = "STATE1";
+  static u8 au8LCDMessage2[] = "STATE2";
+  static u16 u16TimeCounter = 0;
+  static bool bBuzzerIsOn = FALSE;
+  
+  /*Press BUTTON1 to enter state 1*/
+  if (WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1); 
+    
+    DebugPrintf("Entering state 1\n\r");    //Debug out message when pressing BUTTON1
+    
+    /*LCD operations*/
+    LCDCommand(LCD_CLEAR_CMD);             //clear the ever LCDMessage
+    LCDMessage(LINE1_START_ADDR, au8LCDMessage1);  //LCDMessage :State 1
+    
+    /*LCD Back Light : PURPLE 
+      (make up of LCD_RED and LCD_BLUE)*/
+    LedOff(LCD_GREEN);
+    LedOn(LCD_RED);
+    LedOn(LCD_BLUE);
+    
+    /*LED operations,turn on WHITE,PURPLE,BLUE,CYAN*/
+    LedOff(RED);
+    LedOff(ORANGE);
+    LedOff(YELLOW);
+    LedOff(GREEN);
+    LedOn(WHITE);
+    LedOn(PURPLE);
+    LedOn(BLUE);
+    LedOn(CYAN);
+    
+    bBuzzerIsOn = FALSE;  //turn off the buzzer
+    
+  }
+  
+  /*Press BUTTON2 to enter state 1*/
+  if (WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2); 
+    
+    DebugPrintf("Entering state 2\n\r");    //Debug out message when pressing BUTTON2
+    
+    /*LCD operations*/
+    LCDCommand(LCD_CLEAR_CMD);             //clear the ever LCDMessage
+    LCDMessage(LINE1_START_ADDR, au8LCDMessage2);  //LCDMessage :State 2
+    
+    /*LCD Back Light : ORANGE 
+      (make up of LCD_RED PWM100 and LCD_GREEN PWM35)*/
+    LedOff(LCD_BLUE);
+    LedPWM(LCD_RED,LED_PWM_100);
+    LedPWM(LCD_GREEN,LED_PWM_35);
+    
+    /*LED operations,turn on RED 8HZ,ORANGE 4HZ,YELLOW 2HZ,GREEN 1HZ*/
+    LedBlink(RED,LED_8HZ);
+    LedBlink(ORANGE,LED_4HZ);
+    LedBlink(YELLOW,LED_2HZ);
+    LedBlink(GREEN,LED_1HZ);
+    LedOff(WHITE);
+    LedOff(PURPLE);
+    LedOff(BLUE);
+    LedOff(CYAN);
+    
+    /*turn on the buzzer and begin to count time*/
+    u16TimeCounter = 0;
+    bBuzzerIsOn = TRUE;
+  }
+  
+  if (bBuzzerIsOn)
+  {
+    u16TimeCounter++;
+  
+    /*BUZZER operations : 100ms 200HZ tone every second*/
+    if (u16TimeCounter <= BUZZER_TIME)             //turn on the buzzer 100ms
+    {
+      PWMAudioSetFrequency(BUZZER1, 200);  //200HZ
+      PWMAudioOn(BUZZER1);
+    }
+    else            //turn off the buzzer over 100ms
+    {
+      PWMAudioOff(BUZZER1);
+    }
+    
+    if (u16TimeCounter == ONE_SECOND)  //restart to count time every second
+    {
+      u16TimeCounter = 0;
+    }
+  }
+  
+  else
+  {
+    PWMAudioOff(BUZZER1);   //turn off the buzzer in state 1
+  }
 
 } /* end UserApp1SM_Idle() */
     
