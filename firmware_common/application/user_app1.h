@@ -28,7 +28,17 @@ Type Definitions
 /**********************************************************************************************************************
 Constants / Definitions
 **********************************************************************************************************************/
-
+#define ANT_CHANNEL           ANT_CHANNEL_0
+#define ANT_CHANNEL_TYPE      CHANNEL_TYPE_MASTER
+#define ANT_NETWORK           ANT_NETWORK_DEFAULT
+#define ANT_DEVICE_ID_LO      (u8)0x34
+#define ANT_DEVICE_ID_HI      (u8)0x12
+#define ANT_DEVICE_TYPE       (u8)1
+#define ANT_TRANSMISSION_TYPE (u8)1
+#define ANT_CHANNEL_PERIOD_LO (u8)0x00
+#define ANT_CHANNEL_PERIOD_HI (u8)0x20
+#define ANT_FREQUENCE         (u8)50
+#define ANT_TX_POWER          RADIO_TX_POWER_4DBM
 
 /**********************************************************************************************************************
 Function Declarations
@@ -54,6 +64,8 @@ void UserApp1RunActiveState(void);
 /***********************************************************************************************************************
 State Machine Declarations
 ***********************************************************************************************************************/
+static void UserApp1SM_AssignChannel(void);
+
 static void UserApp1SM_Idle(void);    
 
 static void UserApp1SM_Error(void);         

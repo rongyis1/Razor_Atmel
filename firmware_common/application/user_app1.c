@@ -52,13 +52,17 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
 
+extern u32 G_u32AntApiCurrentMessageTimeStamp;                    
+extern AntApplicationMessageType G_eAntApiCurrentMessageClass;    
+extern u8 G_au8AntApiCurrentMessageBytes[ANT_APPLICATION_MESSAGE_BYTES];  
+extern AntExtendedDataType G_sAntApiCurrentMessageExtData;  
 
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
 Variable names shall start with "UserApp1_" and be declared as static.
 ***********************************************************************************************************************/
 static fnCode_type UserApp1_StateMachine;            /* The state machine function pointer */
-//static u32 UserApp1_u32Timeout;                      /* Timeout counter used across states */
+static u32 UserApp1_u32Timeout;                      /* Timeout counter used across states */
 
 
 /**********************************************************************************************************************
@@ -87,11 +91,30 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
- 
-  /* If good initialization, set state to Idle */
-  if( 1 )
+  static AntAssignChannelInfoType User_MasterInfo;
+  
+  User_MasterInfo.AntChannel = ANT_CHANNEL;
+  User_MasterInfo.AntChannelType = ANT_CHANNEL_TYPE;
+  User_MasterInfo.AntNetwork = ANT_NETWORK;
+  User_MasterInfo.AntDeviceIdLo = ANT_DEVICE_ID_LO;
+  User_MasterInfo.AntDeviceIdHi = ANT_DEVICE_ID_HI;
+  User_MasterInfo.AntDeviceType = ANT_DEVICE_TYPE;
+  User_MasterInfo.AntTransmissionType = ANT_TRANSMISSION_TYPE;
+  User_MasterInfo.AntChannelPeriodLo = ANT_CHANNEL_PERIOD_LO;
+  User_MasterInfo.AntChannelPeriodHi = ANT_CHANNEL_PERIOD_HI;
+  User_MasterInfo.AntFrequency = ANT_FREQUENCE;
+  User_MasterInfo.AntTxPower = ANT_TX_POWER;
+  
+  for(u8 i = 0; i < ANT_NETWORK_NUMBER_BYTES; i++)
   {
-    UserApp1_StateMachine = UserApp1SM_Idle;
+    User_MasterInfo.AntNetworkKey[i] = ANT_DEFAULT_NETWORK_KEY;
+  }
+
+  /* If good initialization, set state to Idle */
+  if (AntAssignChannel(&User_MasterInfo))
+  {
+    UserApp1_u32Timeout = G_u32SystemTime1ms;
+    UserApp1_StateMachine = UserApp1SM_AssignChannel;
   }
   else
   {
@@ -131,12 +154,51 @@ void UserApp1RunActiveState(void)
 /**********************************************************************************************************************
 State Machine Function Definitions
 **********************************************************************************************************************/
+static void UserApp1SM_AssignChannel(void)
+{
+  if (AntRadioStatusChannel(ANT_CHANNEL) == ANT_CONFIGURED)
+  {
+    AntOpenChannelNumber(ANT_CHANNEL);
+    UserApp1_StateMachine = UserApp1SM_Idle;
+  }
+  
+  if(IsTimeUp(&UserApp1_u32Timeout, 3000))
+  {
+    UserApp1_StateMachine = UserApp1SM_Error;    
+  }
+
+}
+
+
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
-
+  static u8 au8TestMessage[] = {0, 0, 0, 0, 0xA5, 0, 0, 0};
+  //static u8 au8DataContent[] = "xxxxxxxxxxxxxxxxxxxx";
+  
+  if (AntReadAppMessageBuffer())
+  {
+    if (G_eAntApiCurrentMessageClass == ANT_DATA)
+    {
+      LCDMessage(LINE2_START_ADDR, G_au8AntApiCurrentMessageBytes);
+    }
+    else if (G_eAntApiCurrentMessageClass == ANT_TICK)
+    {
+      au8TestMessage[7]++;
+      if(au8TestMessage[7] == 0)
+      {
+        au8TestMessage[6]++;
+        if(au8TestMessage[6] == 0)
+        {
+          au8TestMessage[5]++;
+        }
+      }
+      AntQueueBroadcastMessage(ANT_CHANNEL, au8TestMessage);
+    }
+  }
+  
 } /* end UserApp1SM_Idle() */
     
 
