@@ -29,17 +29,24 @@ Type Definitions
 Constants / Definitions
 **********************************************************************************************************************/
 /* Required constants for ANT channel configuration */
-#define ANT_CHANNEL_USERAPP             ANT_CHANNEL_0         
-#define ANT_CHANNEL_TYPE_USERAPP        CHANNEL_TYPE_SLAVE    
-#define ANT_DEVICEID_LO_USERAPP         (u8)0xD8               
-#define ANT_DEVICEID_HI_USERAPP         (u8)0x1E        
-#define ANT_DEVICE_TYPE_USERAPP         (u8)1        
-#define ANT_TRANSMISSION_TYPE_USERAPP   (u8)1             
-#define ANT_CHANNEL_PERIOD_LO_USERAPP   (u8)0x00       
-#define ANT_CHANNEL_PERIOD_HI_USERAPP   (u8)0x20      
-#define ANT_FREQUENCY_USERAPP           (u8)50           
-#define ANT_TX_POWER_USERAPP            RADIO_TX_POWER_4DBM
-#define TIMEOUT_VALUE                   (u16)3000
+#define ANT_CHANNEL_SLAVE                ANT_CHANNEL_0         
+#define ANT_CHANNEL_TYPE_SLAVE           CHANNEL_TYPE_SLAVE    
+#define ANT_CHANNEL_MASTER               ANT_CHANNEL_1         
+#define ANT_CHANNEL_TYPE_MASTER          CHANNEL_TYPE_MASTER 
+#define ANT_DEVICE0ID_LO_USERAPP         (u8)0xD8               
+#define ANT_DEVICE0ID_HI_USERAPP         (u8)0x1E
+#define ANT_DEVICE1ID_LO_USERAPP         (u8)0x34               
+#define ANT_DEVICE1ID_HI_USERAPP         (u8)0x12
+#define ANT_DEVICE_TYPE_USERAPP          (u8)1        
+#define ANT_TRANSMISSION_TYPE_USERAPP    (u8)1             
+#define ANT_CHANNEL_PERIOD_LO_USERAPP    (u8)0x00       
+#define ANT_CHANNEL_PERIOD_HI_USERAPP    (u8)0x20      
+#define ANT_FREQUENCY_USERAPP            (u8)50           
+#define ANT_TX_POWER_USERAPP             RADIO_TX_POWER_4DBM
+#define TIMEOUT_VALUE                    (u16)3000
+#define HIDING_TIME_COUNTER              (u8)10
+#define HIDING_TIME_DIS_PLACE            (u8)15
+#define ONE_SECOND_TIME                  (u16)1000
 
 /**********************************************************************************************************************
 Function Declarations
@@ -68,6 +75,8 @@ State Machine Declarations
 static void UserApp1_WaitChannelClose(void);
 
 static void UserApp1SM_AntChannelAssign(void);
+
+static void UserApp1_WaitForHiding(void);
 
 static void UserApp1_ChannelOpen(void);
 
