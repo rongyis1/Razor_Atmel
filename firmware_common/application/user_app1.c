@@ -87,7 +87,14 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
- 
+  /*enable blade control: SDA,SCK,MOSI*/
+  AT91C_BASE_PIOA->PIO_PER = PA_09_I2C_SDA;
+  AT91C_BASE_PIOA->PIO_PER = PA_15_BLADE_SCK;
+  AT91C_BASE_PIOA->PIO_PER = PA_14_BLADE_MOSI;
+  
+  /*set SDA as input*/
+  AT91C_BASE_PIOA->PIO_ODR = PA_09_I2C_SDA;
+  
   /* If good initialization, set state to Idle */
   if( 1 )
   {
@@ -136,6 +143,67 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
+  static u8 u8BlinkTimeCounter = 0;
+  static bool bGreenIsOn = FALSE; 
+  static u32 au32MusicBeep[] = {C6, D6, E6, C6, 
+                                C6, D6, E6, C6, 
+                                E6, F6, G6, G6, 
+                                E6, F6, G6, G6,
+                                G5, A5, G5, F5, E5, C5, 
+                                G5, A5, G5, F5, E5, C5, 
+                                D5, G5, C5, C5,
+                                D5, G5, C5, C5, NO};
+  static u8 u8MusicToneIndex = 0;
+  
+  if (!(AT91C_BASE_PIOA->PIO_PDSR & PA_09_I2C_SDA))
+  {   
+    u8BlinkTimeCounter++;
+    
+    //turn on the BUZZER when the BUTTON is Pressed       
+    PWMAudioOn(BUZZER1);
+    
+    /*LEDs blink alternatively per 400ms when the BUTTON is Pressed*/
+    if (u8BlinkTimeCounter == LED_BLINK_TIME)
+    {  
+      /*set the music tone frequency*/
+      PWMAudioSetFrequency(BUZZER1, au32MusicBeep[u8MusicToneIndex]);
+      
+      u8MusicToneIndex++;    //go to the next tone
+      if (au32MusicBeep[u8MusicToneIndex] == NO)
+      {
+        u8MusicToneIndex = 0;
+      } /*end if (u8BlinkTimeCounter == LED_BLINK_TIME)*/
+      
+      if (bGreenIsOn)
+      {
+        bGreenIsOn = FALSE;
+        
+        /*LEDs: turn off GREEN,turn on RED*/
+        AT91C_BASE_PIOA->PIO_CODR = PA_14_BLADE_MOSI;
+        AT91C_BASE_PIOA->PIO_SODR = PA_15_BLADE_SCK;
+      }
+      else
+      {
+        bGreenIsOn = TRUE;
+        
+        /*LEDs: turn off RED,turn on GREEN*/
+        AT91C_BASE_PIOA->PIO_CODR = PA_15_BLADE_SCK;
+        AT91C_BASE_PIOA->PIO_SODR = PA_14_BLADE_MOSI;
+      } /*end if (bGreenIsOn)*/
+      
+    }
+
+  }
+  else
+  {
+    u8BlinkTimeCounter = 0;  //clear the time counter
+    u8MusicToneIndex = 0;    //return to the first tone
+    
+    /*Turn off LEDs and BUZZER1 when the BUTTON is not Pressed*/
+    AT91C_BASE_PIOA->PIO_CODR = PA_14_BLADE_MOSI;
+    AT91C_BASE_PIOA->PIO_CODR = PA_15_BLADE_SCK;  
+    PWMAudioOff(BUZZER1);         //turn off BUZZER1
+  }
 
 } /* end UserApp1SM_Idle() */
     
