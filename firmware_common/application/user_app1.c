@@ -249,8 +249,10 @@ static void UserApp1SM_Idle(void)
   static s8 s8MinuteCount            = 0;
   static s8 s8HourCount              = 0;
   static s8 s8WeekdayIndex           = 0;
-  static u8 u8CurrentStatus          = 0;
+  static u8 u8CurrentStatus          = MAIN_INTERFACE_STATUS;
   static s8 s8ModifyPartLocation     = 17;
+  static u8 u8BatteryLevel           = 0;
+  static u8 u8BatteryStatusIndex     = 0;
   
   static u8 au8MaxHeartRate[]        = "xxx";
   static u8 au8MinHeartRate[]        = "xxx";
@@ -260,13 +262,16 @@ static void UserApp1SM_Idle(void)
   static u8* pau8CurrentWeekday[]    = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
   static u8 au8SetWarningHRMessage[] = "Set Warning HR:     ";
   static u8 au8WarningHR[]           = "Max: 200 || Min: 45 ";
+  static u8 au8BatteryLEVEL[]        = "Battery Level:     %";
+  static u8 au8BatteryStatus[]       = "Status:             "; 
+  static u8* pau8BatteryEachStatus[] = {"New     ","Good    ","OK      ","Low     ","Critical","Invalid "};
+  static u8 au8RequestMessage[]      = {0x46,0xFF,0xFF,0xFF,0xFF,0x80,0x07,0x01};
   static u8 au8DebugHRMessage[156];
   
   static bool bWarningBeepIsOn       = FALSE;
   static bool bTimeBlinkPartIsOff    = FALSE;
   static bool bModifyPartIsOn        = FALSE;
   static bool bIncreasePart          = FALSE;
-  static bool bBlinkMessageIsOn      = FALSE;
   
   /* count the time and calculate */
   u16TimeCounter1ms++; 
@@ -326,11 +331,9 @@ static void UserApp1SM_Idle(void)
   {
     /* New data message: check what it is */
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
-    {
-      LedOn(WHITE);
-      
-      /* receive the HR data */
-      u8CurrentHeartRate = G_au8AntApiCurrentMessageBytes[HR_MESSAGE_LOCATION];
+    {    
+      /* receive the current HR data */
+      u8CurrentHeartRate = G_au8AntApiCurrentMessageBytes[MAIN_PAGE_HR_LOCATION];
       
       /*choose the max HeartRate*/
       if (u8CurrentHeartRate > u8MaxHeartRate)
@@ -348,18 +351,27 @@ static void UserApp1SM_Idle(void)
       if (u8CurrentHeartRate <= u8MaxWarningHR 
           && u8CurrentHeartRate >= u8MinWarningHR)
       {
-        bWarningBeepIsOn = FALSE;
-        //PWMAudioOff(BUZZER1);     
+        //bWarningBeepIsOn = FALSE;
+        //PWMAudioOff(BUZZER1); 
       }
       else
       {
-        bWarningBeepIsOn = TRUE;
+        //bWarningBeepIsOn = TRUE;
         u8CurrentStatus = IN_DANGEROUS_STATUS;
         //PWMAudioOn(BUZZER1);        
       }    
       
       if (MAIN_INTERFACE_STATUS == u8CurrentStatus)
       {
+        LedOn(WHITE);
+        LedOn(LCD_RED);
+        LedOn(LCD_GREEN);
+        LedOn(LCD_BLUE);
+        LedOff(PURPLE);
+        LedOff(BLUE);
+        LedOff(CYAN);
+        LedOff(RED);
+        
         /* We got new Heart Rate data and choose location to show on LCD */  
         au8CurrentHeartRate[HR_LCD_LOCATION] = HexToASCIICharUpper(u8CurrentHeartRate/100);
         au8CurrentHeartRate[HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8CurrentHeartRate/10%10);
@@ -381,6 +393,8 @@ static void UserApp1SM_Idle(void)
           
           u8CurrentStatus = MAX_AND_MIN_STATUS;
           
+          LedOn(PURPLE);
+          
           /*Convert u8 data to string data to display Max and Min HR on LCD*/
           NumberToAscii(u8MaxHeartRate,au8MaxHeartRate);
           NumberToAscii(u8MinHeartRate,au8MinHeartRate);
@@ -391,24 +405,57 @@ static void UserApp1SM_Idle(void)
           LCDMessage(LINE2_START_ADDR+8,au8MinHeartRate);
         }
         
-        /*Press BUTTON3 to ensure status and return to the main interface*/
+        /*Press BUTTON1 to enter the sleeping status*/
         if (WasButtonPressed(BUTTON1))
         {
           ButtonAcknowledge(BUTTON1);
           LCDCommand(LCD_CLEAR_CMD);
+          
           LedOff(LCD_RED);
           LedOff(LCD_GREEN);
           LedOff(LCD_BLUE);
-          u8CurrentStatus = 5;
+          LedOff(WHITE);
+          
+          u8CurrentStatus = SLEEP_STATUS;
         }
         
-        /* go to status : IN_DANGEROUS_STATUS */
-        /*if (bWarningBeepIsOn)
+        /*Press BUTTON2 to view current battery*/
+        if (WasButtonPressed(BUTTON2))
         {
-          u8CurrentStatus = IN_DANGEROUS_STATUS;
+          ButtonAcknowledge(BUTTON2);
+          u8CurrentStatus = BATTERY_STATUS;
           LCDCommand(LCD_CLEAR_CMD);
-          LCDMessage(LINE1_START_ADDR, "In dangerous!");
-        }*/
+          AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP,au8RequestMessage);
+        }
+      }
+      
+      /* view the current battery status and level in this status */
+      if (BATTERY_STATUS == u8CurrentStatus)
+      {       
+        if (G_au8AntApiCurrentMessageBytes[PAGE_NUMBER_LOCATION] == 0x07
+            || G_au8AntApiCurrentMessageBytes[PAGE_NUMBER_LOCATION] == 0x87)
+        {
+          /* get the current battery level */
+          u8BatteryLevel = G_au8AntApiCurrentMessageBytes[BATTERY_PAGE_LEVEL_LOCATION];
+          au8BatteryLEVEL[BATTERY_LEVEL_LCD_LOCATION] = HexToASCIICharUpper(u8BatteryLevel/100);
+          au8BatteryLEVEL[BATTERY_LEVEL_LCD_LOCATION+1] = HexToASCIICharUpper(u8BatteryLevel/10%10);
+          au8BatteryLEVEL[BATTERY_LEVEL_LCD_LOCATION+2] = HexToASCIICharUpper(u8BatteryLevel%10);
+          /* process when the first bit is '0'*/
+          if ('0' == au8BatteryLEVEL[BATTERY_LEVEL_LCD_LOCATION])
+          {
+            au8BatteryLEVEL[BATTERY_LEVEL_LCD_LOCATION] = ' ';
+          }
+          
+          /* get the current battery status */
+          u8BatteryStatusIndex = G_au8AntApiCurrentMessageBytes[BATTERY_PAGE_STATUS_LOCATION] >> 4;
+          for (u8 i=0; i<BATTERY_STATUS_LCD_LOCATION; i++)
+          {
+            au8BatteryStatus[i+BATTERY_STATUS_LCD_LOCATION] = pau8BatteryEachStatus[u8BatteryStatusIndex-1][i];
+          } 
+        } 
+        /* show battery level and status on the LCD */
+        LCDMessage(LINE1_START_ADDR, au8BatteryLEVEL);
+        LCDMessage(LINE2_START_ADDR, au8BatteryStatus);      
       }
       
       /*draw the graphycal HR data*/ 
@@ -428,7 +475,7 @@ static void UserApp1SM_Idle(void)
     
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {          
-           
+      
     } /* end else if(G_eAntApiCurrentMessageClass == ANT_TICK) */
     
   }/* end AntReadAppMessageBuffer() */
@@ -440,7 +487,11 @@ static void UserApp1SM_Idle(void)
     if (WasButtonPressed(BUTTON0))
     {
       ButtonAcknowledge(BUTTON0);
+      
       u8CurrentStatus = SET_WARNING_HR_STATUS;
+      
+      LedOff(PURPLE);
+        
       LCDCommand(LCD_CLEAR_CMD);
       LCDMessage(LINE1_START_ADDR, au8SetWarningHRMessage);
     }
@@ -458,16 +509,18 @@ static void UserApp1SM_Idle(void)
       if (bTimeBlinkPartIsOff)
       {
         bTimeBlinkPartIsOff = FALSE;
+        LedOff(BLUE);
         LCDClearChars(LINE2_START_ADDR+s8ModifyPartLocation, 3);
       }
       else
       {
         bTimeBlinkPartIsOff = TRUE;
-        au8WarningHR[MAX_WARNING_HR_LCD_LOCATIN]   = HexToASCIICharUpper(u8MaxWarningHR/100);
-        au8WarningHR[MAX_WARNING_HR_LCD_LOCATIN+1] = HexToASCIICharUpper(u8MaxWarningHR/10%10);
-        au8WarningHR[MAX_WARNING_HR_LCD_LOCATIN+2] = HexToASCIICharUpper(u8MaxWarningHR%10);
-        au8WarningHR[MIN_WARNING_HR_LCD_LOCATIN]   = HexToASCIICharUpper(u8MinWarningHR/10);
-        au8WarningHR[MIN_WARNING_HR_LCD_LOCATIN+1] = HexToASCIICharUpper(u8MinWarningHR%10);      
+        LedOn(BLUE);
+        au8WarningHR[MAX_WARNING_HR_LCD_LOCATION]   = HexToASCIICharUpper(u8MaxWarningHR/100);
+        au8WarningHR[MAX_WARNING_HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8MaxWarningHR/10%10);
+        au8WarningHR[MAX_WARNING_HR_LCD_LOCATION+2] = HexToASCIICharUpper(u8MaxWarningHR%10);
+        au8WarningHR[MIN_WARNING_HR_LCD_LOCATION]   = HexToASCIICharUpper(u8MinWarningHR/10);
+        au8WarningHR[MIN_WARNING_HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8MinWarningHR%10);      
         LCDMessage(LINE2_START_ADDR, au8WarningHR);
       }              
     }
@@ -476,13 +529,16 @@ static void UserApp1SM_Idle(void)
     if (WasButtonPressed(BUTTON0))
     { 
       ButtonAcknowledge(BUTTON0);
-      s8ModifyPartLocation -= (MIN_WARNING_HR_LCD_LOCATIN-MAX_WARNING_HR_LCD_LOCATIN);
+      s8ModifyPartLocation -= (MIN_WARNING_HR_LCD_LOCATION-MAX_WARNING_HR_LCD_LOCATION);
       if (s8ModifyPartLocation < 0)
       {
         s8ModifyPartLocation = WEEKDAY_LCD_LOCATION;
         u16BlinkTimeCounter1ms = 0;
         bTimeBlinkPartIsOff = FALSE;
         u8CurrentStatus = MODIFY_TIME_STATUS;
+        
+        LedOff(BLUE);
+        
         LCDCommand(LCD_CLEAR_CMD);
         LCDMessage(LINE1_START_ADDR, au8ModifyTimeMessage);
       }
@@ -509,7 +565,7 @@ static void UserApp1SM_Idle(void)
     if (bModifyPartIsOn)
     {
       /* modify the min HR part */
-      if (MIN_WARNING_HR_LCD_LOCATIN == s8ModifyPartLocation)
+      if (MIN_WARNING_HR_LCD_LOCATION == s8ModifyPartLocation)
       {
         /* increase the number*/
         if (bIncreasePart)
@@ -533,7 +589,7 @@ static void UserApp1SM_Idle(void)
       }
       
       /* modify the max HR part */
-      if (MAX_WARNING_HR_LCD_LOCATIN == s8ModifyPartLocation)
+      if (MAX_WARNING_HR_LCD_LOCATION == s8ModifyPartLocation)
       {
         /* increase the number*/
         if (bIncreasePart)
@@ -573,6 +629,8 @@ static void UserApp1SM_Idle(void)
       if (bTimeBlinkPartIsOff)
       {
         bTimeBlinkPartIsOff = FALSE;
+        
+        LedOff(CYAN);
         if (WEEKDAY_LCD_LOCATION == s8ModifyPartLocation)
         {
           LCDClearChars(LINE2_START_ADDR+s8ModifyPartLocation, 3);
@@ -585,6 +643,8 @@ static void UserApp1SM_Idle(void)
       else
       {
         bTimeBlinkPartIsOff = TRUE;
+        
+        LedOn(CYAN);
         LCDMessage(LINE2_START_ADDR, au8CurrentTime);
       }
                
@@ -763,41 +823,33 @@ static void UserApp1SM_Idle(void)
       
       LedOff(LCD_GREEN);
       LedOff(LCD_BLUE);
-      if (bBlinkMessageIsOn)
+      
+      if (bWarningBeepIsOn)
       {
-        bBlinkMessageIsOn = FALSE;
+        bWarningBeepIsOn = FALSE;
         LedOff(LCD_RED);
+        LedOff(RED);
         LCDCommand(LCD_CLEAR_CMD);
+        PWMAudioSetFrequency(BUZZER1, B6);
       }
       else
       {
-        bBlinkMessageIsOn = TRUE;       
+        bWarningBeepIsOn = TRUE;       
         LedOn(LCD_RED);
+        LedOn(RED);
         LCDCommand(LCD_CLEAR_CMD);
         LCDMessage(LINE1_START_ADDR, "In dangerous!");
-      }
-    }
-    
-    if (bWarningBeepIsOn)
-    {
-      if (400 == u16TimeCounter1ms)
-      {
-        LedOn(RED);
-        PWMAudioSetFrequency(BUZZER1, B6);
-      }
-      if (900 == u16TimeCounter1ms)
-      {
-        LedOff(RED);
         PWMAudioSetFrequency(BUZZER1, E5);
       }
     }
   }
   
-  if (5 == u8CurrentStatus)
+  /* enter the sleep status */
+  if (SLEEP_STATUS == u8CurrentStatus)
   {
-    if (WasButtonPressed(BUTTON2))
+    if (WasButtonPressed(BUTTON1))
     {
-      ButtonAcknowledge(BUTTON2);
+      ButtonAcknowledge(BUTTON1);
       u8CurrentStatus = MAIN_INTERFACE_STATUS;
       LedOn(LCD_RED);
       LedOn(LCD_GREEN);
@@ -811,19 +863,13 @@ static void UserApp1SM_Idle(void)
     ButtonAcknowledge(BUTTON3);
     
     u8CurrentStatus = MAIN_INTERFACE_STATUS;
-    s8ModifyPartLocation = MIN_WARNING_HR_LCD_LOCATIN;
+    s8ModifyPartLocation = MIN_WARNING_HR_LCD_LOCATION;
    
     LCDCommand(LCD_CLEAR_CMD);
     
   }
   
 } /* end UserApp1SM_Idle() */
- 
-
-/*static bool UserApp1SM_UpdateTime(u8* pau8CurrentTime, u8 u8UpdatePart)
-{
-  
-}*/
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Handle an error */
