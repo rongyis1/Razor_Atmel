@@ -28,6 +28,34 @@ Type Definitions
 /**********************************************************************************************************************
 Constants / Definitions
 **********************************************************************************************************************/
+/* Required constants for ANT channel configuration */
+#define ANT_CHANNEL_USERAPP             ANT_CHANNEL_0         
+#define ANT_CHANNEL_TYPE_USERAPP        CHANNEL_TYPE_SLAVE    
+#define ANT_DEVICEID_LO_USERAPP         (u8)1              
+#define ANT_DEVICEID_HI_USERAPP         (u8)0        
+#define ANT_DEVICE_TYPE_USERAPP         (u8)120        
+#define ANT_TRANSMISSION_TYPE_USERAPP   (u8)1             
+#define ANT_CHANNEL_PERIOD_LO_USERAPP   (u8)0x86   
+#define ANT_CHANNEL_PERIOD_HI_USERAPP   (u8)0x1F 
+#define ANT_FREQUENCY_USERAPP           (u8)57          
+#define ANT_TX_POWER_USERAPP            RADIO_TX_POWER_4DBM
+/* Required status constant in User*/
+#define MAIN_INTERFACE_STATUS           (u8)0
+#define MAX_AND_MIN_STATUS              (u8)1
+#define SET_WARNING_HR_STATUS           (u8)2
+#define MODIFY_TIME_STATUS              (u8)3
+#define IN_DANGEROUS_STATUS             (u8)4
+/* Required LCD_location constant in User*/
+#define HR_LCD_LOCATION                 (u8)12
+#define YEAR_LCD_LOCATION               (u8)2
+#define MONTH_LCD_LOCATION              (u8)5
+#define DAY_LCD_LOCATION                (u8)8
+#define HOUR_LCD_LOCATION               (u8)11
+#define MINUTE_LCD_LOCATION             (u8)14
+#define WEEKDAY_LCD_LOCATION            (u8)17
+#define MAX_WARNING_HR_LCD_LOCATIN      (u8)5
+#define MIN_WARNING_HR_LCD_LOCATIN      (u8)17
+#define HR_MESSAGE_LOCATION             (u8)7
 
 
 /**********************************************************************************************************************
@@ -54,7 +82,15 @@ void UserApp1RunActiveState(void);
 /***********************************************************************************************************************
 State Machine Declarations
 ***********************************************************************************************************************/
-static void UserApp1SM_Idle(void);    
+static void UserApp1SM_WaitChannelAssign(void);
+
+static void UserAppSM_WaitSetPassword(void);
+
+static void UserAppSM_WaitChannelOpen(void);
+
+static void UserAppSM_WaitChannelClose(void);
+
+static void UserApp1SM_Idle(void); 
 
 static void UserApp1SM_Error(void);         
 
