@@ -47,6 +47,7 @@ Constants / Definitions
 #define IN_DANGEROUS_STATUS             (u8)4
 #define SLEEP_STATUS                    (u8)5
 #define BATTERY_STATUS                  (u8)6
+#define CHOOSE_MODE_STATUS              (u8)7
 /* Required LCD_location constant in User*/
 #define HR_LCD_LOCATION                 (u8)12
 #define YEAR_LCD_LOCATION               (u8)2
@@ -55,6 +56,7 @@ Constants / Definitions
 #define HOUR_LCD_LOCATION               (u8)11
 #define MINUTE_LCD_LOCATION             (u8)14
 #define WEEKDAY_LCD_LOCATION            (u8)17
+#define MAX_MIN_HR_LCD_LOCATION         (u8)8
 #define MAX_WARNING_HR_LCD_LOCATION     (u8)5
 #define MIN_WARNING_HR_LCD_LOCATION     (u8)17
 #define BATTERY_LEVEL_LCD_LOCATION      (u8)15
@@ -91,8 +93,6 @@ void UserApp1RunActiveState(void);
 State Machine Declarations
 ***********************************************************************************************************************/
 static void UserApp1SM_WaitChannelAssign(void);
-
-static void UserAppSM_WaitSetPassword(void);
 
 static void UserAppSM_WaitChannelOpen(void);
 

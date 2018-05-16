@@ -96,7 +96,13 @@ Promises:
 void UserApp1Initialize(void)
 {
   static u8 au8NetworkKey[] = {0xB9, 0xA5, 0x21, 0xFB, 0xBD, 0x72, 0xC3, 0x45};
+  static u8 au8InitialMessageLine1[] = "FW2-Final-Project";
+  static u8 au8InitialMessageLine2[] = "Turn on sensor...";
   AntAssignChannelInfoType sAntSetupData;
+  
+  LCDCommand(LCD_CLEAR_CMD);
+  LCDMessage(LINE1_START_ADDR, au8InitialMessageLine1);
+  LCDMessage(LINE2_START_ADDR, au8InitialMessageLine2);
   
   /* Configure ANT for this application */
   sAntSetupData.AntChannel          = ANT_CHANNEL_USERAPP;
@@ -184,14 +190,6 @@ static void UserApp1SM_WaitChannelAssign(void)
 } /* end UserApp1SM_WaitChannelAssign */
 
 
-static void UserAppSM_WaitSetPassword(void)
-{
-  static u8 au8PasswordMessage[] = "Set password in Debug:";
-  
-  
-}
-
-
 /* Wait for ANT channel Open */
 static void UserAppSM_WaitChannelOpen(void)
 { 
@@ -218,7 +216,6 @@ static void UserAppSM_WaitChannelClose(void)
   /* Monitor the channel status to check if channel is closed */
   if(AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_CLOSED)
   {
-    //UserApp_StateMachine = UserAppSM_Idle;
     LedOn(GREEN);
   }
   
@@ -254,9 +251,9 @@ static void UserApp1SM_Idle(void)
   static u8 u8BatteryLevel           = 0;
   static u8 u8BatteryStatusIndex     = 0;
   
-  static u8 au8MaxHeartRate[]        = "xxx";
-  static u8 au8MinHeartRate[]        = "xxx";
   static u8 au8CurrentHeartRate[]    = "Current HR:     bpm ";
+  static u8 au8MaxHeartRate[]        = "Max HR:     bpm     ";
+  static u8 au8MinHeartRate[]        = "Min HR:     bpm     ";
   static u8 au8ModifyTimeMessage[]   = "Set Current Time:   ";
   static u8 au8CurrentTime[]         = "2018/05/09 00:00 Mon";
   static u8* pau8CurrentWeekday[]    = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
@@ -264,12 +261,15 @@ static void UserApp1SM_Idle(void)
   static u8 au8WarningHR[]           = "Max: 200 || Min: 45 ";
   static u8 au8BatteryLEVEL[]        = "Battery Level:     %";
   static u8 au8BatteryStatus[]       = "Status:             "; 
+  static u8 au8ChooseMode[]          = "Please choose mode: ";
+  static u8 au8ModeMessage[]         = "Swim     Cycle   Run";
   static u8* pau8BatteryEachStatus[] = {"New     ","Good    ","OK      ","Low     ","Critical","Invalid "};
   static u8 au8RequestMessage[]      = {0x46,0xFF,0xFF,0xFF,0xFF,0x80,0x07,0x01};
+  static u8 au8ModeSettingMessage[]  = {0x4C,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00};
   static u8 au8DebugHRMessage[156];
   
   static bool bWarningBeepIsOn       = FALSE;
-  static bool bTimeBlinkPartIsOff    = FALSE;
+  static bool bBlinkPartIsOff        = FALSE;
   static bool bModifyPartIsOn        = FALSE;
   static bool bIncreasePart          = FALSE;
   
@@ -332,46 +332,32 @@ static void UserApp1SM_Idle(void)
     /* New data message: check what it is */
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {    
-      /* receive the current HR data */
+      /* receive the New HR data */
       u8CurrentHeartRate = G_au8AntApiCurrentMessageBytes[MAIN_PAGE_HR_LOCATION];
       
-      /*choose the max HeartRate*/
+      /*get the max HeartRate*/
       if (u8CurrentHeartRate > u8MaxHeartRate)
       {
         u8MaxHeartRate = u8CurrentHeartRate;
       }
       
-      /*choose the min HeartRate*/
+      /*get the min HeartRate*/
       if (u8CurrentHeartRate < u8MinHeartRate)
       {
         u8MinHeartRate = u8CurrentHeartRate;
       }
       
       /*warning beep when current HR touch the warning HR*/
-      if (u8CurrentHeartRate <= u8MaxWarningHR 
-          && u8CurrentHeartRate >= u8MinWarningHR)
+      if (u8CurrentHeartRate > u8MaxWarningHR 
+          || u8CurrentHeartRate < u8MinWarningHR)
       {
-        //bWarningBeepIsOn = FALSE;
-        //PWMAudioOff(BUZZER1); 
-      }
-      else
-      {
-        //bWarningBeepIsOn = TRUE;
-        u8CurrentStatus = IN_DANGEROUS_STATUS;
-        //PWMAudioOn(BUZZER1);        
-      }    
+        u8CurrentStatus = IN_DANGEROUS_STATUS; 
+        PWMAudioOn(BUZZER1);  
+      } 
       
+      /* the main interface to update data and display on LCD */
       if (MAIN_INTERFACE_STATUS == u8CurrentStatus)
-      {
-        LedOn(WHITE);
-        LedOn(LCD_RED);
-        LedOn(LCD_GREEN);
-        LedOn(LCD_BLUE);
-        LedOff(PURPLE);
-        LedOff(BLUE);
-        LedOff(CYAN);
-        LedOff(RED);
-        
+      {      
         /* We got new Heart Rate data and choose location to show on LCD */  
         au8CurrentHeartRate[HR_LCD_LOCATION] = HexToASCIICharUpper(u8CurrentHeartRate/100);
         au8CurrentHeartRate[HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8CurrentHeartRate/10%10);
@@ -381,59 +367,15 @@ static void UserApp1SM_Idle(void)
         {
           au8CurrentHeartRate[HR_LCD_LOCATION] = ' ';
         } 
-        LCDMessage(LINE2_START_ADDR, au8CurrentHeartRate);
-        //display the current time in main interface
+        //display the current time and HR in main interface
         LCDMessage(LINE1_START_ADDR, au8CurrentTime);
-        
-        
-        /*Press BUTTON0 to view the Max and Min Heart Rate*/
-        if (WasButtonPressed(BUTTON0))
-        {
-          ButtonAcknowledge(BUTTON0);
-          
-          u8CurrentStatus = MAX_AND_MIN_STATUS;
-          
-          LedOn(PURPLE);
-          
-          /*Convert u8 data to string data to display Max and Min HR on LCD*/
-          NumberToAscii(u8MaxHeartRate,au8MaxHeartRate);
-          NumberToAscii(u8MinHeartRate,au8MinHeartRate);
-          LCDCommand(LCD_CLEAR_CMD);
-          LCDMessage(LINE1_START_ADDR, "Max HR:     bpm");
-          LCDMessage(LINE1_START_ADDR+8,au8MaxHeartRate);
-          LCDMessage(LINE2_START_ADDR, "Min HR:     bpm");
-          LCDMessage(LINE2_START_ADDR+8,au8MinHeartRate);
-        }
-        
-        /*Press BUTTON1 to enter the sleeping status*/
-        if (WasButtonPressed(BUTTON1))
-        {
-          ButtonAcknowledge(BUTTON1);
-          LCDCommand(LCD_CLEAR_CMD);
-          
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          LedOff(WHITE);
-          
-          u8CurrentStatus = SLEEP_STATUS;
-        }
-        
-        /*Press BUTTON2 to view current battery*/
-        if (WasButtonPressed(BUTTON2))
-        {
-          ButtonAcknowledge(BUTTON2);
-          u8CurrentStatus = BATTERY_STATUS;
-          LCDCommand(LCD_CLEAR_CMD);
-          AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP,au8RequestMessage);
-        }
+        LCDMessage(LINE2_START_ADDR, au8CurrentHeartRate);
       }
       
       /* view the current battery status and level in this status */
       if (BATTERY_STATUS == u8CurrentStatus)
-      {       
-        if (G_au8AntApiCurrentMessageBytes[PAGE_NUMBER_LOCATION] == 0x07
-            || G_au8AntApiCurrentMessageBytes[PAGE_NUMBER_LOCATION] == 0x87)
+      { 
+        if (G_au8AntApiCurrentMessageBytes[PAGE_NUMBER_LOCATION] == 0x07)
         {
           /* get the current battery level */
           u8BatteryLevel = G_au8AntApiCurrentMessageBytes[BATTERY_PAGE_LEVEL_LOCATION];
@@ -452,10 +394,11 @@ static void UserApp1SM_Idle(void)
           {
             au8BatteryStatus[i+BATTERY_STATUS_LCD_LOCATION] = pau8BatteryEachStatus[u8BatteryStatusIndex-1][i];
           } 
-        } 
-        /* show battery level and status on the LCD */
-        LCDMessage(LINE1_START_ADDR, au8BatteryLEVEL);
-        LCDMessage(LINE2_START_ADDR, au8BatteryStatus);      
+          
+          /* show battery level and status on the LCD */
+          LCDMessage(LINE1_START_ADDR, au8BatteryLEVEL);
+          LCDMessage(LINE2_START_ADDR, au8BatteryStatus); 
+        }
       }
       
       /*draw the graphycal HR data*/ 
@@ -475,15 +418,99 @@ static void UserApp1SM_Idle(void)
     
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {          
-      
     } /* end else if(G_eAntApiCurrentMessageClass == ANT_TICK) */
     
   }/* end AntReadAppMessageBuffer() */
   
+  /* the main interface to monitor the button to choose status */
+  if (MAIN_INTERFACE_STATUS == u8CurrentStatus)
+  {   
+    LedOn(WHITE);
+    LedOn(LCD_RED);
+    LedOn(LCD_GREEN);
+    LedOn(LCD_BLUE);
+    LedOff(PURPLE);
+    LedOff(BLUE);
+    LedOff(CYAN);
+    LedOff(GREEN);
+    LedOff(RED);
+    
+    /*Press BUTTON0 to view the Max and Min Heart Rate*/
+    if (WasButtonPressed(BUTTON0))
+    {
+      ButtonAcknowledge(BUTTON0);     
+      LedOn(PURPLE);
+      LCDCommand(LCD_CLEAR_CMD);
+      for (u32 i=0; i<100000; i++);
+      
+      /*Convert u8 data to string data to display Max and Min HR on LCD*/
+      au8MaxHeartRate[MAX_MIN_HR_LCD_LOCATION]   = HexToASCIICharUpper(u8MaxHeartRate/100);
+      au8MaxHeartRate[MAX_MIN_HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8MaxHeartRate/10%10);
+      au8MaxHeartRate[MAX_MIN_HR_LCD_LOCATION+2] = HexToASCIICharUpper(u8MaxHeartRate%10);
+      au8MinHeartRate[MAX_MIN_HR_LCD_LOCATION]   = HexToASCIICharUpper(u8MinHeartRate/100);
+      au8MinHeartRate[MAX_MIN_HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8MinHeartRate/10%10);
+      au8MinHeartRate[MAX_MIN_HR_LCD_LOCATION+2] = HexToASCIICharUpper(u8MinHeartRate%10);
+      /*process when the first bit is '0'*/
+      if ('0' == au8MaxHeartRate[8])
+      {
+        au8MaxHeartRate[8] = ' ';
+      } 
+      if ('0' == au8MinHeartRate[8])
+      {
+        au8MinHeartRate[8] = ' ';
+      } 
+      LCDMessage(LINE1_START_ADDR,au8MaxHeartRate);
+      for (u32 i=0; i<100000; i++);
+      LCDMessage(LINE2_START_ADDR,au8MinHeartRate);
+      for (u32 i=0; i<100000; i++);
+      
+      u8CurrentStatus = MAX_AND_MIN_STATUS;
+    }
+    
+    /*Press BUTTON1 to enter the sleeping status*/
+    if (WasButtonPressed(BUTTON1))
+    {
+      ButtonAcknowledge(BUTTON1);
+      LCDCommand(LCD_DISPLAY_CMD);
+      for (u32 i=0; i<100000; i++);
+      
+      LedOff(LCD_RED);
+      LedOff(LCD_GREEN);
+      LedOff(LCD_BLUE);
+      LedOff(WHITE);
+      
+      u8CurrentStatus = SLEEP_STATUS;
+    }
+    
+    /*Press BUTTON2 to view current battery*/
+    if (WasButtonPressed(BUTTON2))
+    {
+      ButtonAcknowledge(BUTTON2);     
+      u8CurrentStatus = BATTERY_STATUS;
+      LCDCommand(LCD_CLEAR_CMD);
+      for (u32 i=0; i<100000; i++);
+      LedOn(GREEN);
+      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8RequestMessage);
+    }
+    
+    /*Press BUTTON3 to choose sport mode*/
+    if (WasButtonPressed(BUTTON3))
+    {
+      ButtonAcknowledge(BUTTON3);
+      u8CurrentStatus = CHOOSE_MODE_STATUS;
+      bBlinkPartIsOff = FALSE;
+      u16BlinkTimeCounter1ms = 0;
+      LCDCommand(LCD_CLEAR_CMD);
+      for (u32 i=0; i<100000; i++);
+      LCDMessage(LINE1_START_ADDR, au8ChooseMode);
+    }
+  }
+  
+  
   /* view the Max and Min HR in this status */ 
   if (MAX_AND_MIN_STATUS == u8CurrentStatus)
-  {
-    /*Press BUTTON0 to enter in the next status:MODIFY_TIME_STATUS*/
+  {  
+    /*Press BUTTON0 to enter in the next status:SET_WARNING_HR_STATUS*/
     if (WasButtonPressed(BUTTON0))
     {
       ButtonAcknowledge(BUTTON0);
@@ -493,9 +520,10 @@ static void UserApp1SM_Idle(void)
       LedOff(PURPLE);
         
       LCDCommand(LCD_CLEAR_CMD);
-      LCDMessage(LINE1_START_ADDR, au8SetWarningHRMessage);
+      for (u32 i=0; i<100000; i++);
     }
   } /* end max/min HR status */
+  
   
   /*Set Warning HR in this status*/ 
   if (SET_WARNING_HR_STATUS == u8CurrentStatus)
@@ -506,15 +534,15 @@ static void UserApp1SM_Idle(void)
     {
       u16BlinkTimeCounter1ms = 0;
       
-      if (bTimeBlinkPartIsOff)
+      if (bBlinkPartIsOff)
       {
-        bTimeBlinkPartIsOff = FALSE;
+        bBlinkPartIsOff = FALSE;
         LedOff(BLUE);
         LCDClearChars(LINE2_START_ADDR+s8ModifyPartLocation, 3);
       }
       else
       {
-        bTimeBlinkPartIsOff = TRUE;
+        bBlinkPartIsOff = TRUE;
         LedOn(BLUE);
         au8WarningHR[MAX_WARNING_HR_LCD_LOCATION]   = HexToASCIICharUpper(u8MaxWarningHR/100);
         au8WarningHR[MAX_WARNING_HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8MaxWarningHR/10%10);
@@ -522,25 +550,26 @@ static void UserApp1SM_Idle(void)
         au8WarningHR[MIN_WARNING_HR_LCD_LOCATION]   = HexToASCIICharUpper(u8MinWarningHR/10);
         au8WarningHR[MIN_WARNING_HR_LCD_LOCATION+1] = HexToASCIICharUpper(u8MinWarningHR%10);      
         LCDMessage(LINE2_START_ADDR, au8WarningHR);
-      }              
+        LCDMessage(LINE1_START_ADDR, au8SetWarningHRMessage);
+      } 
     }
     
-    /*Press BUTTON0 to choose which part to be modified*/
+    /* Press BUTTON0 to choose which part to be set */
     if (WasButtonPressed(BUTTON0))
     { 
       ButtonAcknowledge(BUTTON0);
       s8ModifyPartLocation -= (MIN_WARNING_HR_LCD_LOCATION-MAX_WARNING_HR_LCD_LOCATION);
+      /* enter the status:MODIFY_TIME_STATUS */
       if (s8ModifyPartLocation < 0)
       {
         s8ModifyPartLocation = WEEKDAY_LCD_LOCATION;
         u16BlinkTimeCounter1ms = 0;
-        bTimeBlinkPartIsOff = FALSE;
+        bBlinkPartIsOff = FALSE;
         u8CurrentStatus = MODIFY_TIME_STATUS;
         
-        LedOff(BLUE);
-        
+        LedOff(BLUE);        
         LCDCommand(LCD_CLEAR_CMD);
-        LCDMessage(LINE1_START_ADDR, au8ModifyTimeMessage);
+        for (u32 i=0; i<100000; i++);
       }
     }
     
@@ -626,9 +655,9 @@ static void UserApp1SM_Idle(void)
     {
       u16BlinkTimeCounter1ms = 0;
       
-      if (bTimeBlinkPartIsOff)
+      if (bBlinkPartIsOff)
       {
-        bTimeBlinkPartIsOff = FALSE;
+        bBlinkPartIsOff = FALSE;
         
         LedOff(CYAN);
         if (WEEKDAY_LCD_LOCATION == s8ModifyPartLocation)
@@ -642,12 +671,12 @@ static void UserApp1SM_Idle(void)
       }
       else
       {
-        bTimeBlinkPartIsOff = TRUE;
-        
+        bBlinkPartIsOff = TRUE;     
         LedOn(CYAN);
-        LCDMessage(LINE2_START_ADDR, au8CurrentTime);
+        LCDMessage(LINE2_START_ADDR, au8CurrentTime); 
+        LCDMessage(LINE1_START_ADDR, au8ModifyTimeMessage);   
       }
-               
+        
     }
 
     /*Press BUTTON0 to choose which part to be modified*/
@@ -812,6 +841,7 @@ static void UserApp1SM_Idle(void)
     
   } /* end Modify time status */
   
+  
   /*process dangerous HR in this status*/ 
   if (IN_DANGEROUS_STATUS == u8CurrentStatus)
   {
@@ -830,6 +860,7 @@ static void UserApp1SM_Idle(void)
         LedOff(LCD_RED);
         LedOff(RED);
         LCDCommand(LCD_CLEAR_CMD);
+        for (u32 i=0; i<10000; i++);
         PWMAudioSetFrequency(BUZZER1, B6);
       }
       else
@@ -837,12 +868,21 @@ static void UserApp1SM_Idle(void)
         bWarningBeepIsOn = TRUE;       
         LedOn(LCD_RED);
         LedOn(RED);
-        LCDCommand(LCD_CLEAR_CMD);
         LCDMessage(LINE1_START_ADDR, "In dangerous!");
         PWMAudioSetFrequency(BUZZER1, E5);
       }
     }
-  }
+    
+    /* Press BUTTON3 to turn off the BUZZER and return to the intial
+   status for restarting the deveice */
+    if (IsButtonPressed(BUTTON3))
+    {      
+      PWMAudioOff(BUZZER1);
+      u8MaxWarningHR = 200;
+      u8MinWarningHR = 45; 
+    }
+  } /* end IN_DANGEROUS status */
+  
   
   /* enter the sleep status */
   if (SLEEP_STATUS == u8CurrentStatus)
@@ -851,22 +891,94 @@ static void UserApp1SM_Idle(void)
     {
       ButtonAcknowledge(BUTTON1);
       u8CurrentStatus = MAIN_INTERFACE_STATUS;
+      LCDCommand(LCD_DISPLAY_CMD | LCD_DISPLAY_ON);
+      for (u32 i=0; i<100000; i++);
       LedOn(LCD_RED);
       LedOn(LCD_GREEN);
       LedOn(LCD_BLUE);
     }
-  }
+  } /* end SLEEP status */
   
-  /*Press BUTTON3 to ensure status and return to the main interface*/
-  if (WasButtonPressed(BUTTON3))
+  
+  /* choose current sport mode in this status */
+  if (CHOOSE_MODE_STATUS == u8CurrentStatus)
   {
-    ButtonAcknowledge(BUTTON3);
+    u16BlinkTimeCounter1ms++;
+    if (u16BlinkTimeCounter1ms == 500)
+    {
+      u16BlinkTimeCounter1ms = 0;
+      
+      if (bBlinkPartIsOff)
+      {
+        bBlinkPartIsOff = FALSE;
+        LCDClearChars(LINE2_START_ADDR+s8ModifyPartLocation, 5);
+      }
+      else
+      {
+        bBlinkPartIsOff = TRUE;     
+        LCDMessage(LINE2_START_ADDR, au8ModeMessage);
+        LCDMessage(LINE1_START_ADDR, au8ChooseMode);
+      }   
+      
+    }
     
-    u8CurrentStatus = MAIN_INTERFACE_STATUS;
-    s8ModifyPartLocation = MIN_WARNING_HR_LCD_LOCATION;
+    /* Press BUTTON0 to shift left to choose mode */
+    if (WasButtonPressed(BUTTON0))
+    {
+      ButtonAcknowledge(BUTTON0);  
+      s8ModifyPartLocation -= 8;
+      if (s8ModifyPartLocation < 0)
+      {
+        s8ModifyPartLocation = 17;
+      }
+    }
+    
+    /* Press BUTTON1 to shift right to choose mode */
+    if (WasButtonPressed(BUTTON1))
+    {
+      ButtonAcknowledge(BUTTON1);  
+      s8ModifyPartLocation += 8;
+      if (s8ModifyPartLocation > 17)
+      {
+        s8ModifyPartLocation = 1;
+      }
+    }
+    
+    /* Press BUTTON2 to ensure the chosen mode */
+    if (WasButtonPressed(BUTTON2))
+    {
+      ButtonAcknowledge(BUTTON2);
+      switch (s8ModifyPartLocation)
+      {
+      case 1: 
+        au8ModeSettingMessage[7] = 0x05;
+        break;
+      case 9: 
+        au8ModeSettingMessage[7] = 0x02;
+        break;
+      case 17: 
+        au8ModeSettingMessage[7] = 0x01;
+        break;
+      default:
+        break;
+      }
+      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8ModeSettingMessage);
+    }
+  } /* end choose mode status */
    
-    LCDCommand(LCD_CLEAR_CMD);
-    
+  
+  if (u8CurrentStatus != MAIN_INTERFACE_STATUS)
+  {
+    /*Press BUTTON3 to ensure status and return to the main interface*/
+    if (WasButtonPressed(BUTTON3))
+    {
+      ButtonAcknowledge(BUTTON3);  
+      s8ModifyPartLocation = MIN_WARNING_HR_LCD_LOCATION;
+      
+      LCDCommand(LCD_CLEAR_CMD);
+      for (u32 i=0; i<100000; i++);
+      u8CurrentStatus = MAIN_INTERFACE_STATUS;      
+    }
   }
   
 } /* end UserApp1SM_Idle() */
