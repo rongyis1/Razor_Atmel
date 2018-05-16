@@ -65,6 +65,9 @@ Constants / Definitions
 #define BATTERY_PAGE_LEVEL_LOCATION     (u8)1
 #define BATTERY_PAGE_STATUS_LOCATION    (u8)3
 #define PAGE_NUMBER_LOCATION            (u8)0
+#define RUNNING_MODE_LCD_LOCATION       (u8)17
+#define CYCLING_MODE_LCD_LOCATION       (u8)9
+#define SWIMMING_MODE_LCD_LOCATION      (u8)1
 
 
 

@@ -262,7 +262,7 @@ static void UserApp1SM_Idle(void)
   static u8 au8BatteryLEVEL[]        = "Battery Level:     %";
   static u8 au8BatteryStatus[]       = "Status:             "; 
   static u8 au8ChooseMode[]          = "Please choose mode: ";
-  static u8 au8ModeMessage[]         = "Swim     Cycle   Run";
+  static u8 au8ModeMessage[]         = " Swim    Cycle   Run";
   static u8* pau8BatteryEachStatus[] = {"New     ","Good    ","OK      ","Low     ","Critical","Invalid "};
   static u8 au8RequestMessage[]      = {0x46,0xFF,0xFF,0xFF,0xFF,0x80,0x07,0x01};
   static u8 au8ModeSettingMessage[]  = {0x4C,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00};
@@ -950,13 +950,13 @@ static void UserApp1SM_Idle(void)
       ButtonAcknowledge(BUTTON2);
       switch (s8ModifyPartLocation)
       {
-      case 1: 
+      case SWIMMING_MODE_LCD_LOCATION: 
         au8ModeSettingMessage[7] = 0x05;
         break;
-      case 9: 
+      case CYCLING_MODE_LCD_LOCATION: 
         au8ModeSettingMessage[7] = 0x02;
         break;
-      case 17: 
+      case RUNNING_MODE_LCD_LOCATION: 
         au8ModeSettingMessage[7] = 0x01;
         break;
       default:
@@ -967,9 +967,9 @@ static void UserApp1SM_Idle(void)
   } /* end choose mode status */
    
   
+  /*Press BUTTON3 to ensure status and return to the main interface*/
   if (u8CurrentStatus != MAIN_INTERFACE_STATUS)
   {
-    /*Press BUTTON3 to ensure status and return to the main interface*/
     if (WasButtonPressed(BUTTON3))
     {
       ButtonAcknowledge(BUTTON3);  
@@ -979,7 +979,7 @@ static void UserApp1SM_Idle(void)
       for (u32 i=0; i<100000; i++);
       u8CurrentStatus = MAIN_INTERFACE_STATUS;      
     }
-  }
+  }  /* end the status */
   
 } /* end UserApp1SM_Idle() */
 
